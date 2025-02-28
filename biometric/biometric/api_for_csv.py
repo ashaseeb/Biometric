@@ -24,7 +24,7 @@ def upload_employee_checkin():
         file_stream = BytesIO(file_content)
         df = pd.read_excel(file_stream, engine="openpyxl")
 
-        required_columns = ["USERID", "InOutDateTime", "DeviceInOut"]
+        required_columns = ["USERID", "InOutDateTime", "DeviceInOut","UserName"]
 
         if not all(col in df.columns for col in required_columns):
             return {"error": f"Missing required columns: {', '.join(required_columns)}"}
@@ -36,6 +36,7 @@ def upload_employee_checkin():
             employee_id = str(row["USERID"]).strip()
             checkin_time = row["InOutDateTime"]
             in_out = str(row["DeviceInOut"]).strip().upper()
+            employee=row.get("UserName")
 
             if in_out not in ["IN", "OUT"]:
                 skipped_entries.append(f"Invalid log type for USERID {employee_id} at {checkin_time}: {in_out}")
@@ -51,7 +52,7 @@ def upload_employee_checkin():
 
             checkin_doc = frappe.get_doc({
                 "doctype": "Employee Checkin",
-                "employee": employee_id,
+                "employee": employee,
                 "time": checkin_time,
                 "log_type": in_out,
             })

@@ -24,7 +24,7 @@ def upload_employee_checkin():
         file_stream = BytesIO(file_content)
         df = pd.read_excel(file_stream, engine="openpyxl")
 
-        required_columns = ["USERID", "InOutDateTime", "DeviceInOut","UserName"]
+        required_columns = ["USERID", "InOutDateTime", "DeviceInOut", "UserName"]
 
         if not all(col in df.columns for col in required_columns):
             return {"error": f"Missing required columns: {', '.join(required_columns)}"}
@@ -33,13 +33,28 @@ def upload_employee_checkin():
         created_entries = []
 
         for _, row in df.iterrows():
-            employee_id = str(row["USERID"]).strip()
+            user_id = str(row["USERID"]).strip()
             checkin_time = row["InOutDateTime"]
             in_out = str(row["DeviceInOut"]).strip().upper()
-            employee=row.get("UserName")
+            employee_name = str(row["UserName"]).strip()
+
+            employee_id = frappe.get_value("Employee", {"employee_name": employee_name}, "name")
+
+            if not employee_id:
+                new_employee = frappe.get_doc({
+                    "doctype": "Employee",
+                    "employee_name": employee_name,
+                    "status": "Active",
+                    "attendance_device_id": user_id, 
+                    "company": frappe.defaults.get_defaults().get("company"),  
+                })
+                new_employee.insert(ignore_permissions=True)
+                frappe.db.commit()
+                employee_id = new_employee.name  
+                created_entries.append(f"New employee created: {employee_name} ({employee_id})")
 
             if in_out not in ["IN", "OUT"]:
-                skipped_entries.append(f"Invalid log type for USERID {employee_id} at {checkin_time}: {in_out}")
+                skipped_entries.append(f"Invalid log type for {employee_id} at {checkin_time}: {in_out}")
                 continue  
 
             existing_checkin = frappe.get_value("Employee Checkin", 
@@ -52,7 +67,7 @@ def upload_employee_checkin():
 
             checkin_doc = frappe.get_doc({
                 "doctype": "Employee Checkin",
-                "employee": employee,
+                "employee": employee_id,  
                 "time": checkin_time,
                 "log_type": in_out,
             })

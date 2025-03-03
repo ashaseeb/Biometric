@@ -14,7 +14,7 @@ def upload_employee_checkin():
         file_content = uploaded_file.read()
 
         file_doc = save_file(
-            uploaded_file.filename, 
+            uploaded_file.filename,  
             file_content, 
             "Employee Checkin", 
             "Employee Checkin Upload",  
